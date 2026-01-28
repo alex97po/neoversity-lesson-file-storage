@@ -1,13 +1,18 @@
 import React, { useState, useRef } from 'react';
+import type { UploadStrategy } from '../services/api';
+import { getPresignedUploadUrl, uploadToPresignedUrl } from '../services/api';
 import './UploadArea.css';
 
 interface UploadAreaProps {
     onUpload: (file: File) => Promise<void>;
+    uploadStrategy: UploadStrategy;
+    onRefresh: () => Promise<void>;
 }
 
-const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
+const UploadArea: React.FC<UploadAreaProps> = ({ onUpload, uploadStrategy, onRefresh }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -37,12 +42,45 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
         }
     };
 
+
     const handleFileUpload = async (file: File) => {
         setIsUploading(true);
+        setUploadProgress(0);
+
         try {
-            await onUpload(file);
+            if (uploadStrategy === 'multipart') {
+                // Multipart upload - use existing onUpload callback
+                await onUpload(file);
+            } else {
+                // Presigned URL upload
+                console.log('Starting presigned URL upload for:', file.name);
+
+                // Step 1: Get presigned URL
+                const presignedData = await getPresignedUploadUrl({
+                    filename: file.name,
+                    contentType: file.type,
+                    sizeBytes: file.size,
+                });
+                console.log('Got presigned URL:', presignedData);
+
+                // Step 2: Upload to S3 with progress tracking
+                console.log('Uploading to S3...');
+                await uploadToPresignedUrl(file, presignedData, (progress) => {
+                    console.log('Upload progress:', progress);
+                    setUploadProgress(progress);
+                });
+                console.log('Upload to S3 complete!');
+
+                // Step 3: Refresh the file list
+                await onRefresh();
+                console.log('File list refreshed');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            throw error;
         } finally {
             setIsUploading(false);
+            setUploadProgress(0);
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -72,8 +110,22 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
 
             {isUploading ? (
                 <div className="upload-status">
-                    <div className="spinner" />
-                    <p>Uploading...</p>
+                    {uploadStrategy === 'presigned' ? (
+                        <>
+                            <div className="progress-bar-container">
+                                <div
+                                    className="progress-bar-fill"
+                                    style={{ width: `${uploadProgress}%` }}
+                                />
+                            </div>
+                            <p>Uploading... {uploadProgress}%</p>
+                        </>
+                    ) : (
+                        <>
+                            <div className="spinner" />
+                            <p>Uploading...</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <>

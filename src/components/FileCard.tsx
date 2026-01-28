@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { FileItem } from '../services/api';
 import './FileCard.css';
 
@@ -7,6 +7,8 @@ interface FileCardProps {
 }
 
 const FileCard: React.FC<FileCardProps> = ({ file }) => {
+    const [isPlayingVideo, setIsPlayingVideo] = useState(false);
+
     const getFileExtension = (key: string): string => {
         const parts = key.split('.');
         return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
@@ -27,13 +29,44 @@ const FileCard: React.FC<FileCardProps> = ({ file }) => {
         window.open(file.url, '_blank');
     };
 
+    const handlePlayVideo = () => {
+        setIsPlayingVideo(true);
+    };
+
+    const renderVideoPreview = () => {
+        // If user hasn't clicked play yet and we have a thumbnail, show it
+        if (!isPlayingVideo && file.thumbnailUrl) {
+            return (
+                <div className="video-thumbnail-container" onClick={handlePlayVideo}>
+                    <img src={file.thumbnailUrl} alt={fileName} className="file-image" />
+                    <div className="play-overlay">
+                        <svg
+                            width="64"
+                            height="64"
+                            viewBox="0 0 24 24"
+                            fill="white"
+                            stroke="white"
+                            strokeWidth="2"
+                        >
+                            <circle cx="12" cy="12" r="10" opacity="0.8" />
+                            <polygon points="10 8 16 12 10 16 10 8" fill="white" />
+                        </svg>
+                    </div>
+                </div>
+            );
+        }
+
+        // Otherwise show the actual video player
+        return <video src={file.url} className="file-video" controls autoPlay={isPlayingVideo} />;
+    };
+
     return (
         <div className="file-card glass glass-hover fade-in">
             <div className="file-preview">
                 {isImage(extension) ? (
                     <img src={file.url} alt={fileName} className="file-image" />
                 ) : isVideo(extension) ? (
-                    <video src={file.url} className="file-video" controls />
+                    renderVideoPreview()
                 ) : (
                     <div className="file-icon">
                         <svg

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import FileGrid from './components/FileGrid';
 import UploadArea from './components/UploadArea';
 import { fetchFiles, uploadFile } from './services/api';
-import type { FileItem } from './services/api';
+import type { FileItem, UploadStrategy } from './services/api';
 import './App.css';
 
 function App() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadStrategy, setUploadStrategy] = useState<UploadStrategy>('multipart');
 
   const loadFiles = async () => {
     try {
@@ -28,7 +29,7 @@ function App() {
     loadFiles();
   }, []);
 
-  const handleUpload = async (file: File) => {
+  const handleMultipartUpload = async (file: File) => {
     try {
       setError(null);
       await uploadFile(file);
@@ -45,25 +46,46 @@ function App() {
       <header className="app-header">
         <div className="container">
           <div className="header-content">
-            <h1 className="app-title">
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-              </svg>
-              File Gallery
-            </h1>
-            <p className="app-subtitle">Upload and manage your files</p>
+            <div className="header-top">
+              <div className="header-left">
+                <h1 className="app-title">
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  File Gallery
+                </h1>
+                <p className="app-subtitle">Upload and manage your files</p>
+              </div>
+              <div className="upload-strategy-toggle">
+                <span className="toggle-label">Upload Method:</span>
+                <div className="toggle-buttons">
+                  <button
+                    className={`toggle-btn ${uploadStrategy === 'multipart' ? 'active' : ''}`}
+                    onClick={() => setUploadStrategy('multipart')}
+                  >
+                    Multipart
+                  </button>
+                  <button
+                    className={`toggle-btn ${uploadStrategy === 'presigned' ? 'active' : ''}`}
+                    onClick={() => setUploadStrategy('presigned')}
+                  >
+                    Presigned URL
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -90,7 +112,11 @@ function App() {
             </div>
           )}
 
-          <UploadArea onUpload={handleUpload} />
+          <UploadArea
+            onUpload={handleMultipartUpload}
+            uploadStrategy={uploadStrategy}
+            onRefresh={loadFiles}
+          />
           <FileGrid files={files} loading={loading} />
         </div>
       </main>
