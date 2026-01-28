@@ -47,8 +47,8 @@ function App() {
           <div className="header-content">
             <h1 className="app-title">
               <svg
-                width="32"
-                height="32"
+                width="28"
+                height="28"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
